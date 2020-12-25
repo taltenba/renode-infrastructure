@@ -17,14 +17,17 @@ namespace Antmicro.Renode.Peripherals.Wireless
      */
     public class ESP32 : ISPIPeripheral, IUART, IGPIOSender
     {
-        public ESP32(string ipAddress, int udpServerPort, int udpMessageMagic, int udpMessageSize, int defaultAudioBlockSize, 
+        public ESP32(string ipAddress, int udpServerPort, int udpMessageMagic, int minUdpMessageSize, int maxUdpMessageSize, int defaultAudioBlockSize,
                      uint uartBaudRate, Bits uartStopBits, Parity uartParityBit)
         {
             if (udpServerPort < 0 || udpServerPort > 65535)
                 throw new ArgumentOutOfRangeException("udpServerPort", udpServerPort, "Invalid port value.");
             
-            if (udpMessageSize <= 0 || (udpMessageSize & 0x03) != 0)
-                throw new ArgumentOutOfRangeException("udpMessageSize", udpMessageSize, "Invalid size, must be a positive multiple of 4.");
+            if (minUdpMessageSize <= 0 || minUdpMessageSize < 4)
+                throw new ArgumentOutOfRangeException("minUdpMessageSize", minUdpMessageSize, "Invalid size, must be at least 4 bytes.");
+
+            if (maxUdpMessageSize <= 0 || (maxUdpMessageSize & 0x03) != 0)
+                throw new ArgumentOutOfRangeException("maxUdpMessageSize", maxUdpMessageSize, "Invalid size, must be a positive multiple of 4.");
             
             if (defaultAudioBlockSize <= 0 || (defaultAudioBlockSize & 0x03) != 0)
                 throw new ArgumentOutOfRangeException("defaultAudioBlockSize", defaultAudioBlockSize, "Invalid size, must be a positive multiple of 4.");
@@ -40,7 +43,8 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
             UdpServerPort = udpServerPort;
             UdpMessageMagic = udpMessageMagic;
-            UdpMessageSize = udpMessageSize;
+            MinUdpMessageSize = minUdpMessageSize;
+            MaxUdpMessageSize = maxUdpMessageSize;
             DefaultAudioBlockSize = defaultAudioBlockSize;
             BaudRate = uartBaudRate;
             StopBits = uartStopBits;
@@ -288,7 +292,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     return;
                 }
 
-                if (msg.Data.Length != UdpMessageSize)
+                if (msg.Data.Length < MinUdpMessageSize || msg.Data.Length > MaxUdpMessageSize)
                 {
                     this.Log(LogLevel.Warning, "Unexpected control message size: {0}", msg.Data.Length);
                     return;
@@ -477,7 +481,8 @@ namespace Antmicro.Renode.Peripherals.Wireless
         public int IpAddress { get; }
         public int UdpServerPort { get; }
         public int UdpMessageMagic { get; }
-        public int UdpMessageSize { get; }
+        public int MinUdpMessageSize { get; }
+        public int MaxUdpMessageSize { get; }
         public int DefaultAudioBlockSize { get; }
         public uint BaudRate { get; }
         public Bits StopBits { get; }
@@ -741,7 +746,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                         dataLength = 1;
                         break;
                     case Address.Message:
-                        dataLength = esp.UdpMessageSize;
+                        dataLength = esp.MaxUdpMessageSize;
                         break;
                     case Address.AudioBlockSize:
                         dataLength = 2;
@@ -771,12 +776,16 @@ namespace Antmicro.Renode.Peripherals.Wireless
                         buffer.Add((byte) esp.ReadStatus());
                         break;
                     case Address.Message:
-                        IEnumerable<byte> msg = esp.ReadMessage();
+                        byte[] msg = esp.ReadMessage();
 
                         if (msg == null)
                             return -1;
 
                         buffer.AddRange(msg);
+
+                        for (int i = msg.Length; i < dataLength; ++i)
+                            buffer.Add(0);
+
                         break;
                     case Address.AudioData:
                         int ret = esp.ReadAudioBlock(buffer);
