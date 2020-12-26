@@ -60,7 +60,7 @@ namespace Antmicro.Renode.Peripherals.Sound
                 return;
             }
 
-            int addr = (data[1] << 8) | data[0];
+            int addr = (data[0] << 8) | data[1];
 
             if (data.Length == 2)
             {
@@ -74,7 +74,7 @@ namespace Antmicro.Renode.Peripherals.Sound
                 /* Write request */
                 for (i = 2; i < data.Length; i += 2)
                 {
-                    ushort val = (ushort) ((data[i + 1] << 8) | data[i]);
+                    ushort val = (ushort) ((data[i] << 8) | data[i + 1]);
                     RegistersCollection.Write(addr, val);
                     ++addr;
                 }
@@ -94,7 +94,6 @@ namespace Antmicro.Renode.Peripherals.Sound
 
             for (i = 0; i < count; i += 2)
             {
-                //int regValue = registers[readAddress];
                 ushort regValue = RegistersCollection.Read(readAddress);
                 data[0] = (byte) (regValue >> 8);
                 data[1] = (byte) regValue;
