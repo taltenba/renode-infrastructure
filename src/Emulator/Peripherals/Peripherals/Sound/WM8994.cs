@@ -181,7 +181,6 @@ namespace Antmicro.Renode.Peripherals.Sound
 
         private void DefineRegisters()
         {
-            /* Page 69 */
             Registers.Dac1lMixerRouting.Define16(this, 0x0000, "R1537")
                 .WithFlag(0, out aif1dac1lDac1lEnable, name: "AIF1DAC1L_TO_DAC1L")
                 .WithTaggedFlag("AIF1DAC2L_TO_DAC1L", 1)
@@ -200,7 +199,6 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithTaggedFlag("ADCR_TO_DAC1R", 5)
                 .WithReservedBits(6, 10);
 
-            /* Page 98 */
             Registers.Aif1Dac1lVolume.Define16(this, 0x00C0, "R1026")
                 .WithValueField(0, 8, out aif1dac1lVol, name: "AIF1DAC1L_VOL")
                 .WithFlag(8, FieldMode.Write, writeCallback: OnAif1Dac1VolUpdate, name: "AIF1DAC1_VU")
@@ -211,7 +209,6 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithFlag(8, FieldMode.Write, writeCallback: OnAif1Dac1VolUpdate, name: "AIF1DAC1_VU")
                 .WithReservedBits(9, 7);
             
-            /* Page 99 */
             Registers.Aif1Dac1Filters1.Define16(this, 0x0200, "R1056")
                 .WithReservedBits(0, 1)
                 .WithTag("AIF1DAC1_DEEMP", 1, 2)
@@ -223,7 +220,6 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithReservedBits(8, 1)
                 .WithFlag(9, out aif1dac1Mute, name: "AIF1DAC1_MUTE");
 
-            /* Page 105 + 174 */
             Registers.PowerManagement5.Define16(this, 0x0000, "R5")
                 .WithFlag(0, out dac1rEnable, name: "DAC1R_ENA")
                 .WithFlag(1, out dac1lEnable, name: "DAC1L_ENA")
@@ -238,7 +234,6 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithTaggedFlag("AIF2DACL_ENA", 13)
                 .WithReservedBits(14, 2);
             
-            /* Page 107 */
             Registers.Dac1lVolume.Define16(this, 0x02C0, "R1552")
                 .WithValueField(0, 8, out dac1lVol, name: "DAC1L_VOL")
                 .WithFlag(8, FieldMode.Write, writeCallback: OnDac1VolUpdate, name: "DAC1_VU")
@@ -249,7 +244,6 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithFlag(8, FieldMode.Write, writeCallback: OnDac1VolUpdate, name: "DAC1_VU")
                 .WithFlag(9, out dac1rMute, name: "DAC1R_MUTE");
 
-            /* Page 113 */
             Registers.PowerManagement1.Define16(this, 0x0000, "R1")
                 .WithFlag(0, out biasEnable, name: "BIAS_ENA")
                 .WithEnumField(1, 2, out vmidMode, name: "VMID_SEL")
@@ -265,7 +259,6 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithFlag(13, out spkOutrEnable, name: "SPKOUTR_ENA")
                 .WithReservedBits(14, 2);
 
-            /* Page 121 */
             Registers.SpkMixlAttenuation.Define16(this, 0x0003, "R34")
                 .WithValueField(0, 2, out spkMixlVol, name: "SPKMIXL_VOL")
                 .WithFlag(2, out spkMixlAttenuation, name: "DAC1L_SPKMIXL_VOL")
@@ -301,7 +294,6 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithTaggedFlag("DAC2L_TO_SPKMIXL", 9)
                 .WithReservedBits(10, 6);
 
-            /* Page 127 */
             Registers.SpklVolume.Define16(this, 0x0079, "R38")
                 .WithValueField(0, 6, out spkOutlVol, name: "SPKOUTL_VOL")
                 .WithFlag(6, out spkOutlUnmute, name: "SPKOUTL_MUTE_N")
@@ -314,7 +306,6 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithTaggedFlag("SPKOUTL_ZC", 7)
                 .WithFlag(8, FieldMode.Write, writeCallback: OnSpkOutVolUpdate, name: "SPKOUT_VU");
 
-            /* Page 129 */
             Registers.SpkOutMixers.Define16(this, 0x0011, "R36")
                 .WithFlag(0, out spkMixrSpkOutrEnable, name: "SPKMIXR_TO_SPKOUTR")
                 .WithTaggedFlag("SPKMIXL_TO_SPKOUTR", 1)
@@ -324,7 +315,6 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithTaggedFlag("IN2LRP_TO_SPKOUTL", 5)
                 .WithReservedBits(6, 10);
 
-            /* Page 176 */
             Registers.Aif1Control1.Define16(this, 0x4050, name: "R768")
                 .WithReservedBits(0, 3)
                 .WithEnumField(3, 2, out aif1Format, name: "AIF1_FMT")
@@ -350,7 +340,6 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithTaggedFlag("AIF1DACR_SRC", 14)
                 .WithTaggedFlag("AIF1DACL_SRC", 15);
             
-            /* Page 193 */
             Registers.Aif1Clocking1.Define16(this, 0x0000, name: "R512")
                 .WithFlag(0, out aif1ClkEnable, name: "AIF1CLK_ENA")
                 .WithFlag(1, out aif1ClkDivider, name: "AIFCLK_DIV")
@@ -371,7 +360,6 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithTaggedFlag("TOCLK_ENA", 4)
                 .WithReservedBits(5, 11);
         
-            /* Page 219 */
             Registers.WriteSequencerControl1.Define16(this, 0x0000, name: "R272")
                 .WithValueField(0, 7, out wseqStartIndex, name: "WSEQ_START_INDEX")
                 .WithReservedBits(7, 1)
@@ -386,10 +374,23 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithFlag(8, FieldMode.Read, name: "WSEQ_BUSY")
                 .WithReservedBits(9, 7);
 
-            /* Page 245 */
             Registers.SoftwareReset.Define16(this, 0x8994, name: "R0")
                 .WithValueField(0, 16, valueProviderCallback: _ => 0x8994, name: "SW_RESET")
                 .WithWriteCallback((_, __) => Reset());
+
+            Registers.Oversampling.Define16(this, 0x0002, name: "R1568")
+                .WithFlag(0, name: "DAC_OSR128")
+                .WithFlag(1, name: "ADC_OSR128")
+                .WithReservedBits(2, 14);
+
+            Registers.Errata1.Define16(this)
+                .WithIgnoredBits(0, 16);
+
+            Registers.Errata2.Define16(this)
+                .WithIgnoredBits(0, 16);
+
+            Registers.Errata3.Define16(this)
+                .WithIgnoredBits(0, 16);
         }
 
         private void OnAif1Dac1VolUpdate(bool oldVal, bool newVal)
@@ -758,7 +759,13 @@ namespace Antmicro.Renode.Peripherals.Sound
             Dac1lMixerRouting = 0x0601,
             Dac1rMixerRouting = 0x0602,
             Dac1lVolume = 0x0610,
-            Dac1rVolume = 0x0611
+            Dac1rVolume = 0x0611,
+            Oversampling = 0x0620,
+
+            /* WM8994 rev C errata work-around registers, content unknown */
+            Errata1 = 0x0056,
+            Errata2 = 0x0102,
+            Errata3 = 0x0817
         }
 
         public sealed class Config
