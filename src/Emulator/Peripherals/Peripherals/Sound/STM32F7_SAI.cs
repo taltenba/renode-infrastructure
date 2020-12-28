@@ -271,7 +271,7 @@ namespace Antmicro.Renode.Peripherals.Sound
             }
             else
             {
-                slotData <<= (4 - slotByteCount);
+                slotData <<= 8 * (4 - slotByteCount);
 
                 for (int i = 0; i < slotByteCount; ++i)
                 {
