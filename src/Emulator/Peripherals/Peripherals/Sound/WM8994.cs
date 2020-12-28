@@ -484,21 +484,21 @@ namespace Antmicro.Renode.Peripherals.Sound
             if (aifVol == 0)
                 return float.NegativeInfinity;
             else if (aifVol < 0xC0)
-                ampli += 0.375f * (aifVol - 0xC0);
+                ampli += 0.375f * ((int) aifVol - 0xC0);
             
             if (dacVol == 0)
                 return float.NegativeInfinity;
             else if (dacVol < 0xC0)
-                ampli += 0.375f * (dacVol - 0xC0);
-            
+                ampli += 0.375f * ((int) dacVol - 0xC0);
+
             if (mixVol == 0b11)
                 return float.NegativeInfinity;
             else
                 ampli += -6.0f * mixVol;
-            
+
             if (mixAttenuation)
                 ampli += -3.0f;
-            
+
             ampli += 6.0f - (0x3F - outVol);
             return ampli;
         }
