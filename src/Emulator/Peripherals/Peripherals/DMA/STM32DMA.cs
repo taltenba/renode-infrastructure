@@ -241,11 +241,23 @@ namespace Antmicro.Renode.Peripherals.DMA
                     break;
                 }
 
+                int byteCount = numberOfData;
+
+                switch (peripheralTransferType)
+                {
+                case TransferType.Word:
+                    byteCount *= 2;
+                    break;
+                case TransferType.DoubleWord:
+                    byteCount *= 4;
+                    break;
+                }
+
                 var sourceTransferType = direction == Direction.PeripheralToMemory ? peripheralTransferType : memoryTransferType;
                 var destinationTransferType = direction == Direction.MemoryToPeripheral ? peripheralTransferType : memoryTransferType;
                 var incrementSourceAddress = direction == Direction.PeripheralToMemory ? peripheralIncrementAddress : memoryIncrementAddress;
                 var incrementDestinationAddress = direction == Direction.MemoryToPeripheral ? peripheralIncrementAddress : memoryIncrementAddress;
-                var request = new Request(sourceAddress, destinationAddress, numberOfData, sourceTransferType, destinationTransferType,
+                var request = new Request(sourceAddress, destinationAddress, byteCount, sourceTransferType, destinationTransferType,
                                   incrementSourceAddress, incrementDestinationAddress);
                 if(request.Size > 0)
                 {
@@ -253,6 +265,8 @@ namespace Antmicro.Renode.Peripherals.DMA
                     {
                         parent.engine.IssueCopy(request);
                         parent.streamFinished[streamNo] = true;
+                        numberOfData = 0;
+
                         if(interruptOnComplete)
                         {
                             parent.machine.LocalTimeSource.ExecuteInNearestSyncedState(_ => IRQ.Set());
