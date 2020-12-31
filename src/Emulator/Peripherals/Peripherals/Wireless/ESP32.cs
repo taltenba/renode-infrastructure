@@ -360,6 +360,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                         }
                         else
                         {
+                            audioSrc = new AudioSource(0, 0);
                             audioState = AudioState.Disconnected;
                             SetStatusFlag(StatusFlag.AudioSrcConnectionError);
                             this.Log(LogLevel.Info, "Audio connection failed.");
@@ -376,6 +377,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                         }
                         else
                         {
+                            audioSrc = new AudioSource(0, 0);
                             audioState = AudioState.Disconnected;
                             SetStatusFlag(StatusFlag.AudioSrcConnectionError);
                             this.Log(LogLevel.Info, "Audio connection closed.");
