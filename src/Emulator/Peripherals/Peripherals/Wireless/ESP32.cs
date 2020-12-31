@@ -447,7 +447,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
             return ParseInt16(bytes, ref start);
         }
 
-        private static void GetBytesInt32(IList<byte> bytes, int val, ref int start)
+        private static void GetBytesInt32(byte[] bytes, int val, ref int start)
         {
             bytes[start] = (byte) val;
             bytes[start + 1] = (byte) (val >> 8);
@@ -457,13 +457,13 @@ namespace Antmicro.Renode.Peripherals.Wireless
             start += 4;
         }
 
-        private static void GetBytesInt32(IList<byte> bytes, int val)
+        private static void GetBytesInt32(byte[] bytes, int val)
         {
             int start = 0;
             GetBytesInt32(bytes, val, ref start);
         }
 
-        private static void GetBytesInt16(IList<byte> bytes, int val, ref int start)
+        private static void GetBytesInt16(byte[] bytes, int val, ref int start)
         {
             bytes[start] = (byte) val;
             bytes[start + 1] = (byte) (val >> 8);
@@ -471,7 +471,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
             start += 2;
         }
 
-        private static void GetBytesInt16(IList<byte> bytes, int val)
+        private static void GetBytesInt16(byte[] bytes, int val)
         {
             int start = 0;
             GetBytesInt16(bytes, val, ref start);
@@ -670,20 +670,28 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 switch (stage)
                 {
                     case Stage.Request:
-                        if (ParseRequest(data) == 0)
+                        buffer.Add(data);
+
+                        if (buffer.Count == 4)
                         {
-                            stage = Stage.Data;
+                            int req = ParseInt32(buffer);
+                            buffer.Clear();
 
-                            esp.AckPin.Unset();
-                            esp.AckPin.Set();
+                            if (ParseRequest(req) == 0)
+                            {
+                                stage = Stage.Data;
 
-                            esp.Log(LogLevel.Noisy,
-                                    "Transaction request received: {0} - {1}",
-                                    direction, address);
-                        } else {
-                            esp.Log(LogLevel.Warning,
-                                    "Bad request: {0} - {1}",
-                                    direction, address);
+                                esp.AckPin.Unset();
+                                esp.AckPin.Set();
+
+                                esp.Log(LogLevel.Noisy,
+                                        "Transaction request received: {0} - {1}",
+                                        direction, address);
+                            } else {
+                                esp.Log(LogLevel.Warning,
+                                        "Bad request: {0} - {1}",
+                                        direction, address);
+                            }
                         }
 
                         break;
@@ -733,7 +741,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 esp.Log(LogLevel.Noisy, "Transaction completed.");
             }
 
-            private int ParseRequest(byte request)
+            private int ParseRequest(int request)
             {
                 if ((request & 0x80) == 0)
                     direction = Direction.Read;
@@ -745,16 +753,16 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 switch (address)
                 {
                     case Address.Status:
-                        dataLength = 1;
+                        dataLength = 4;
                         break;
                     case Address.Message:
                         dataLength = esp.MaxUdpMessageSize;
                         break;
                     case Address.AudioBlockSize:
-                        dataLength = 2;
+                        dataLength = 4;
                         break;
                     case Address.AudioSrc:
-                        dataLength = 6;
+                        dataLength = 8;
                         break;
                     case Address.AudioData:
                         dataLength = esp.audioBlockSize;
@@ -775,7 +783,9 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 switch (address)
                 {
                     case Address.Status:
-                        buffer.Add((byte) esp.ReadStatus());
+                        byte[] statusBytes = new byte[4];
+                        GetBytesInt32(statusBytes, (int) esp.ReadStatus());
+                        buffer.AddRange(statusBytes);
                         break;
                     case Address.Message:
                         byte[] msg = esp.ReadMessage();
@@ -850,7 +860,8 @@ namespace Antmicro.Renode.Peripherals.Wireless
                         done = esp.ProcessAudioSrc(buffer.ToArray());
                         break;
                     case Address.AudioBlockSize:
-                        done = esp.ProcessAudioBlockSize(ParseInt16());
+                        int blockSize = ParseInt32(buffer);
+                        done = esp.ProcessAudioBlockSize(blockSize);
                         break;
                     default:
                         esp.Log(LogLevel.Error, "Invalid write access: {0}", address);
@@ -859,11 +870,6 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
                 buffer.Clear();
                 return done;
-            }
-
-            private int ParseInt16()
-            {
-                return (buffer[1] << 8) | buffer[0];
             }
 
             private readonly ESP32 esp;
