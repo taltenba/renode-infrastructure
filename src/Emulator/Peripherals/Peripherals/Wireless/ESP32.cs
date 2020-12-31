@@ -101,6 +101,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
             {
                 StatusFlag s = status;
                 ClearStatusFlag(StatusFlag.AudioSrcConnectionError);
+                StatusPin.Set(); /* De-assert Status IRQ line */
                 return s;
             }
         }
@@ -121,6 +122,8 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
                     if (msgQueue.Count == 0)
                         ClearStatusFlag(StatusFlag.HasMessage);
+                    else
+                        StatusPin.Unset();
                 }
             }
 
@@ -153,6 +156,8 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     
                     if (audioBuffer.Count < audioBlockSize)
                         ClearStatusFlag(StatusFlag.HasAudio);
+                    else
+                        StatusPin.Unset();
 
                     ret = 0;
                 }
@@ -332,7 +337,8 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 foreach (byte b in data)
                     audioBuffer.Enqueue(b);
                 
-                SetStatusFlag(StatusFlag.HasAudio);
+                if (audioBuffer.Count >= audioBlockSize)
+                    SetStatusFlag(StatusFlag.HasAudio);
             }
 
             this.Log(LogLevel.Noisy, "{0} audio bytes received.", data.Length);
@@ -396,7 +402,12 @@ namespace Antmicro.Renode.Peripherals.Wireless
         {
             lock (stateLock)
             {
-                status |= flag;
+                StatusFlag new_status = status | flag;
+
+                if (new_status == status)
+                    return;
+
+                status = new_status;
                 StatusPin.Unset();
             }
         }
@@ -406,9 +417,6 @@ namespace Antmicro.Renode.Peripherals.Wireless
             lock (stateLock)
             {
                 status &= ~flag;
-
-                if (status == 0)
-                    StatusPin.Set();
             }
         }
 
@@ -682,7 +690,6 @@ namespace Antmicro.Renode.Peripherals.Wireless
                                 stage = Stage.Data;
 
                                 esp.AckPin.Unset();
-                                esp.AckPin.Set();
 
                                 esp.Log(LogLevel.Noisy,
                                         "Transaction request received: {0} - {1}",
@@ -702,7 +709,6 @@ namespace Antmicro.Renode.Peripherals.Wireless
                         {
                             esp.Log(LogLevel.Noisy, "All transaction data transmitted.");
                             
-                            esp.AckPin.Unset();
                             bool done = ProcessData();
 
                             if (done)
