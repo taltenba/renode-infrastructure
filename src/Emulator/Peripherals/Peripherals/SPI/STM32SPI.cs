@@ -27,25 +27,19 @@ namespace Antmicro.Renode.Peripherals.SPI
 
         public byte ReadByte(long offset)
         {
-            // byte interface is there for DMA
-            if(offset % 4 == 0)
-            {
-                return (byte)ReadDoubleWord(offset);
-            }
+            if((Registers) offset == Registers.Data)
+                return HandleDataRead();
+
             this.LogUnhandledRead(offset);
             return 0;
         }
 
         public void WriteByte(long offset, byte value)
         {
-            if(offset % 4 == 0)
-            {
-                WriteDoubleWord(offset, (uint)value);
-            }
+            if((Registers) offset == Registers.Data)
+                HandleDataWrite(value);
             else
-            {
                 this.LogUnhandledWrite(offset, value);
-            }
         }
 
         public ushort ReadWord(long offset)
@@ -63,7 +57,9 @@ namespace Antmicro.Renode.Peripherals.SPI
             switch((Registers)offset)
             {
             case Registers.Data:
-                return HandleDataRead();
+                byte val1 = HandleDataRead();
+                byte val2 = HandleDataRead();
+                return (uint) ((val2 << 8) | val1);
             default:
                 return registers.Read(offset);
             }
@@ -74,7 +70,8 @@ namespace Antmicro.Renode.Peripherals.SPI
             switch((Registers)offset)
             {
             case Registers.Data:
-                HandleDataWrite(value);
+                HandleDataWrite((byte) value);
+                HandleDataWrite((byte) (value >> 8));
                 break;
             default:
                 registers.Write(offset, value);
@@ -105,7 +102,7 @@ namespace Antmicro.Renode.Peripherals.SPI
             private set;
         }
 
-        private uint HandleDataRead()
+        private byte HandleDataRead()
         {
             IRQ.Unset();
             lock(receiveBuffer)
@@ -120,7 +117,7 @@ namespace Antmicro.Renode.Peripherals.SPI
             }
         }
 
-        private void HandleDataWrite(uint value)
+        private void HandleDataWrite(byte value)
         {
             IRQ.Unset();
             lock(receiveBuffer)
