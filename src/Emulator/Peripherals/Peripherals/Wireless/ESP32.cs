@@ -179,7 +179,10 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 if (!isConnectedToAp)
                     return true;
             }
-            
+
+            /* Replace destination IP address by magic number */
+            GetBytesInt32(msgData, UdpMessageMagic);
+
             WirelessMessage msg = CreateUdpServerMessage(Channel.Control, msgData);
             remoteClient.TransmitMessage(msg);
             return true;
