@@ -306,7 +306,18 @@ namespace Antmicro.Renode.Peripherals.DMA
                 memoryIncrementAddress = (value & (1 << 10)) != 0;
                 peripheralIncrementAddress = (value & (1 << 9)) != 0;
                 direction = (Direction)((value >> 6) & 3);
+
                 interruptOnComplete = (value & (1 << 4)) != 0;
+
+                if (interruptOnComplete)
+                {
+                    lock (parent.streamFinished)
+                    {
+                        if (parent.streamFinished[streamNo])
+                            IRQ.Set();
+                    }
+                }
+
                 // we ignore transfer error interrupt enable as we never post errors
                 if((value & ~0xE037ED5) != 0)
                 {
