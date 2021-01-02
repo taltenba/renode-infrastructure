@@ -261,6 +261,7 @@
     <Compile Include="Peripherals\Sound\STM32F7_SAI.cs" />
     <Compile Include="Peripherals\Sound\WM8994.cs" />
     <Compile Include="Peripherals\Miscellaneous\STM32F7_RCC.cs" />
+    <Compile Include="Peripherals\DMA\IDmaSourcePeripheral.cs" />
     <Compile Include="..\Cores\Common\RegisterEnumParser.cs">
       <DependentUpon>RegisterEnumParser.tt</DependentUpon>
     </Compile>

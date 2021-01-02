@@ -12,10 +12,11 @@ using Antmicro.Renode.Core.Structure;
 using System.Collections.Generic;
 using Antmicro.Renode.Core;
 using Antmicro.Renode.Core.Structure.Registers;
+using Antmicro.Renode.Peripherals.DMA;
 
 namespace Antmicro.Renode.Peripherals.SPI
 {
-    public sealed class STM32SPI : NullRegistrationPointPeripheralContainer<ISPIPeripheral>, IWordPeripheral, IDoubleWordPeripheral, IBytePeripheral, IKnownSize
+    public sealed class STM32SPI : NullRegistrationPointPeripheralContainer<ISPIPeripheral>, IWordPeripheral, IDoubleWordPeripheral, IBytePeripheral, IKnownSize, IDmaSourcePeripheral
     {
         public STM32SPI(Machine machine) : base(machine)
         {
@@ -88,6 +89,22 @@ namespace Antmicro.Renode.Peripherals.SPI
             registers.Reset();
         }
 
+        public byte[] DmaGetData(uint size)
+        {
+            lock (receiveBuffer)
+            {
+                if (receiveBuffer.Count < size)
+                    return null;
+
+                byte[] data = new byte[size];
+
+                for (int i = 0; i < size; ++i)
+                    data[i] = receiveBuffer.Dequeue();
+
+                return data;
+            }
+        }
+
         public long Size
         {
             get
@@ -129,8 +146,13 @@ namespace Antmicro.Renode.Peripherals.SPI
                     receiveBuffer.Enqueue(0x0);
                     return;
                 }
-                receiveBuffer.Enqueue(peripheral.Transmit((byte)value)); // currently byte mode is the only one we support
-                this.NoisyLog("Transmitted 0x{0:X}, received 0x{1:X}.", value, receiveBuffer.Peek());
+
+                byte rx = peripheral.Transmit((byte) value);
+                receiveBuffer.Enqueue(rx); // currently byte mode is the only one we support
+                this.NoisyLog("Transmitted 0x{0:X}, received 0x{1:X}.", value, rx);
+
+                if (rxDmaEnable.Value)
+                    DmaDataReady?.Invoke(this);
             }
             Update();
         }
@@ -171,6 +193,10 @@ namespace Antmicro.Renode.Peripherals.SPI
             };
             registers = new DoubleWordRegisterCollection(this, registerDictionary);
         }
+
+        public event Action<IDmaSourcePeripheral> DmaDataReady;
+
+        public ulong DataRegOffset => (ulong) Registers.Data;
 
         private DoubleWordRegisterCollection registers;
         private IFlagRegisterField txBufferEmptyInterruptEnable, rxBufferNotEmptyInterruptEnable, txDmaEnable, rxDmaEnable;

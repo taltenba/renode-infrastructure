@@ -161,6 +161,7 @@ namespace Antmicro.Renode.Peripherals.DMA
             {
                 this.parent = parent;
                 this.streamNo = streamNo;
+                this.fifo = new List<byte>();
                 IRQ = new GPIO();
             }
 
@@ -222,12 +223,18 @@ namespace Antmicro.Renode.Peripherals.DMA
                 peripheralIncrementAddress = false;
                 direction = Direction.PeripheralToMemory;
                 interruptOnComplete = false;
+                pendingRequest = null;
+                fifo.Clear();
             }
 
             private void DoTransfer()
             {
+                if (numberOfData == 0 || pendingRequest != null)
+                    return;
+
                 var sourceAddress = 0u;
                 var destinationAddress = 0u;
+
                 switch(direction)
                 {
                 case Direction.PeripheralToMemory:
@@ -241,38 +248,35 @@ namespace Antmicro.Renode.Peripherals.DMA
                     break;
                 }
 
-                int byteCount = numberOfData;
-
-                switch (peripheralTransferType)
-                {
-                case TransferType.Word:
-                    byteCount *= 2;
-                    break;
-                case TransferType.DoubleWord:
-                    byteCount *= 4;
-                    break;
-                }
-
+                int byteCount = numberOfData * ((int) peripheralTransferType);
                 var sourceTransferType = direction == Direction.PeripheralToMemory ? peripheralTransferType : memoryTransferType;
                 var destinationTransferType = direction == Direction.MemoryToPeripheral ? peripheralTransferType : memoryTransferType;
                 var incrementSourceAddress = direction == Direction.PeripheralToMemory ? peripheralIncrementAddress : memoryIncrementAddress;
                 var incrementDestinationAddress = direction == Direction.MemoryToPeripheral ? peripheralIncrementAddress : memoryIncrementAddress;
-                var request = new Request(sourceAddress, destinationAddress, byteCount, sourceTransferType, destinationTransferType,
-                                  incrementSourceAddress, incrementDestinationAddress);
-                if(request.Size > 0)
-                {
-                    lock(parent.streamFinished)
-                    {
-                        parent.engine.IssueCopy(request);
-                        parent.streamFinished[streamNo] = true;
-                        numberOfData = 0;
 
-                        if(interruptOnComplete)
+                pendingRequest = new Request(sourceAddress, destinationAddress, byteCount, sourceTransferType, destinationTransferType,
+                                             incrementSourceAddress, incrementDestinationAddress);
+
+                if (direction == Direction.PeripheralToMemory && !peripheralIncrementAddress)
+                {
+                    SystemBus sysbus = parent.machine.SystemBus;
+                    IBusRegistered<IBusPeripheral> sourcePeriph = sysbus.WhatIsAt(sourceAddress);
+
+                    if (sourcePeriph.Peripheral is IDmaSourcePeripheral)
+                    {
+                        IDmaSourcePeripheral dmaSourcePeriph = (IDmaSourcePeripheral) sourcePeriph.Peripheral;
+                        BusRangeRegistration registrationPoint = sourcePeriph.RegistrationPoint;
+                        ulong dataRegAddr = registrationPoint.Range.StartAddress + dmaSourcePeriph.DataRegOffset;
+
+                        if (peripheralAddress == dataRegAddr)
                         {
-                            parent.machine.LocalTimeSource.ExecuteInNearestSyncedState(_ => IRQ.Set());
+                            dmaSourcePeriph.DmaDataReady += OnPeripheralDataReady;
+                            return;
                         }
                     }
                 }
+
+                PerformRequest();
             }
 
             private uint HandleConfigurationRead()
@@ -280,14 +284,14 @@ namespace Antmicro.Renode.Peripherals.DMA
                 var returnValue = 0u;
                 returnValue |= (uint)(channel << 25);
                 returnValue |= (uint)(priority << 16);
-
                 returnValue |= FromTransferType(memoryTransferType) << 13;
                 returnValue |= FromTransferType(peripheralTransferType) << 11;
                 returnValue |= memoryIncrementAddress ? (1u << 10) : 0u;
                 returnValue |= peripheralIncrementAddress ? (1u << 9) : 0u;
                 returnValue |= ((uint)direction) << 6;
                 returnValue |= interruptOnComplete ? (1u << 4) : 0u;
-                // regarding enable bit - our transfer is always finished
+                returnValue |= pendingRequest == null ? 0u : 1u;
+
                 return returnValue;
             }
 
@@ -308,9 +312,14 @@ namespace Antmicro.Renode.Peripherals.DMA
                 {
                     parent.Log(LogLevel.Warning, "Channel {0}: unsupported bits written to configuration register. Value is 0x{1:X}.", streamNo, value);
                 }
+
                 if((value & 1) != 0)
                 {
                     DoTransfer();
+                }
+                else
+                {
+                    CancelPendingRequest();
                 }
             }
 
@@ -345,6 +354,87 @@ namespace Antmicro.Renode.Peripherals.DMA
                 throw new InvalidOperationException("Should not reach here.");
             }
 
+            private void OnPeripheralDataReady(IDmaSourcePeripheral periph)
+            {
+                SystemBus sysbus = parent.machine.SystemBus;
+
+                byte[] data = periph.DmaGetData((uint) pendingRequest.Value.ReadTransferType);
+
+                if (data == null)
+                    return;
+
+                fifo.AddRange(data);
+
+                if (fifo.Count == pendingRequest.Value.Size)
+                {
+                    periph.DmaDataReady -= OnPeripheralDataReady;
+                    PerformRequest();
+                }
+            }
+
+            private void PerformRequest()
+            {
+                Request req = pendingRequest.Value;
+
+                if (fifo.Count != 0)
+                {
+                    byte[] buffer = fifo.ToArray();
+
+                    req = new Request(
+                                        new Place(buffer, 0),
+                                        req.Destination,
+                                        req.Size,
+                                        req.ReadTransferType,
+                                        req.WriteTransferType,
+                                        req.IncrementReadAddress,
+                                        req.IncrementWriteAddress
+                                    );
+
+                    fifo.Clear();
+                }
+
+                lock (parent.streamFinished)
+                {
+                    parent.engine.IssueCopy(req);
+                    parent.streamFinished[streamNo] = true;
+                    numberOfData = 0;
+                    pendingRequest = null;
+
+                    if (interruptOnComplete)
+                    {
+                        parent.machine.LocalTimeSource.ExecuteInNearestSyncedState(_ => IRQ.Set());
+                    }
+                }
+            }
+
+            private void CancelPendingRequest()
+            {
+                if (pendingRequest == null)
+                    return;
+
+                Request req = pendingRequest.Value;
+
+                int writeAlignment = (int) req.WriteTransferType;
+                int alignmentExcess = fifo.Count % writeAlignment;
+
+                if (alignmentExcess != 0)
+                {
+                    pendingRequest = new Request(
+                                        req.Source,
+                                        req.Destination,
+                                        (fifo.Count - alignmentExcess) + writeAlignment,
+                                        req.ReadTransferType,
+                                        req.WriteTransferType,
+                                        req.IncrementReadAddress,
+                                        req.IncrementWriteAddress
+                                    );
+                }
+                else
+                {
+                    PerformRequest();
+                }
+            }
+
             private uint memory0Address;
             private uint memory1Address;
             private uint peripheralAddress;
@@ -357,9 +447,11 @@ namespace Antmicro.Renode.Peripherals.DMA
             private bool interruptOnComplete;
             private byte channel;
             private byte priority;
+            private Request? pendingRequest;
 
             private readonly STM32DMA parent;
             private readonly int streamNo;
+            private readonly List<byte> fifo;
 
             private enum Registers
             {
