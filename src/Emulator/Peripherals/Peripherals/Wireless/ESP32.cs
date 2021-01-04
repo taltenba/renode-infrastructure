@@ -22,13 +22,13 @@ namespace Antmicro.Renode.Peripherals.Wireless
         {
             if (udpServerPort < 0 || udpServerPort > 65535)
                 throw new ArgumentOutOfRangeException("udpServerPort", udpServerPort, "Invalid port value.");
-            
+
             if (minUdpMessageSize <= 0 || minUdpMessageSize < 4)
                 throw new ArgumentOutOfRangeException("minUdpMessageSize", minUdpMessageSize, "Invalid size, must be at least 4 bytes.");
 
             if (maxUdpMessageSize <= 0 || (maxUdpMessageSize & 0x03) != 0)
                 throw new ArgumentOutOfRangeException("maxUdpMessageSize", maxUdpMessageSize, "Invalid size, must be a positive multiple of 4.");
-            
+
             if (defaultAudioBlockSize <= 0 || (defaultAudioBlockSize & 0x03) != 0)
                 throw new ArgumentOutOfRangeException("defaultAudioBlockSize", defaultAudioBlockSize, "Invalid size, must be a positive multiple of 4.");
 
@@ -36,7 +36,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
             if (addr.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
                 throw new ArgumentOutOfRangeException("ipAddress", ipAddress, "The specified IP address is not a valid IPv4 address.");
-            
+
             byte[] addrBytes = addr.GetAddressBytes();
             Array.Reverse(addrBytes);
             IpAddress = ParseInt32(addrBytes);
@@ -57,7 +57,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
             msgQueue = new Queue<WirelessMessage>();
             audioBuffer = new Queue<byte>();
             stateLock = new object();
-            
+
             Reset();
         }
 
@@ -70,7 +70,6 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 status = 0;
                 audioBlockSize = DefaultAudioBlockSize;
                 isConnectedToAp = false;
-                audioSrc = new AudioSource(0, 0);
                 audioState = AudioState.Disconnected;
                 msgQueue.Clear();
                 audioBuffer.Clear();
@@ -109,7 +108,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
         private byte[] ReadMessage()
         {
             WirelessMessage msg;
- 
+
             lock (stateLock)
             {
                 if (msgQueue.Count == 0)
@@ -132,8 +131,8 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 this.Log(LogLevel.Warning, "Tried to read message queue when empty.");
                 return null;
             }
-            
-            /* Replace magic number by client source address in message data */ 
+
+            /* Replace magic number by client source address in message data */
             GetBytesInt32(msg.Data, msg.MessageHeader.SourceAddress);
 
             return msg.Data;
@@ -153,7 +152,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 {
                     for (int i = 0; i < audioBlockSize; ++i)
                         outBuffer.Add(audioBuffer.Dequeue());
-                    
+
                     if (audioBuffer.Count < audioBlockSize)
                         ClearStatusFlag(StatusFlag.HasAudio);
                     else
@@ -195,11 +194,11 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
             lock (stateLock)
             {
-                if (src == audioSrc)
+                if (isDisconnectRequest && audioState == AudioState.Disconnected)
                     return true;
-                
-                audioSrc = src;
+
                 audioBuffer.Clear();
+                ClearStatusFlag(StatusFlag.HasAudio);
 
                 if (isDisconnectRequest)
                     audioState = AudioState.Disconnected;
@@ -222,7 +221,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                          "Invalid audio block size, must be a multiple of 4: {0}."
                           + " Size will be rounded to next multiple of 4.",
                           size);
-                
+
                 size = (size + 0x03) & ~0x03;
             }
 
@@ -232,7 +231,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     return true;
 
                 audioBlockSize = size;
-                
+
                 if (audioBuffer.Count >= audioBlockSize)
                     SetStatusFlag(StatusFlag.HasAudio);
                 else
@@ -339,7 +338,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
                 foreach (byte b in data)
                     audioBuffer.Enqueue(b);
-                
+
                 if (audioBuffer.Count >= audioBlockSize)
                     SetStatusFlag(StatusFlag.HasAudio);
             }
@@ -369,7 +368,6 @@ namespace Antmicro.Renode.Peripherals.Wireless
                         }
                         else
                         {
-                            audioSrc = new AudioSource(0, 0);
                             audioState = AudioState.Disconnected;
                             SetStatusFlag(StatusFlag.AudioSrcConnectionError);
                             this.Log(LogLevel.Info, "Audio connection failed.");
@@ -380,13 +378,12 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     case AudioState.Connected:
                         if (statusData[0] == 0)
                         {
-                            this.Log(LogLevel.Warning, 
+                            this.Log(LogLevel.Warning,
                                      "Unexpected audio connection status received when connected: {0}.",
                                      statusData[0]);
                         }
                         else
                         {
-                            audioSrc = new AudioSource(0, 0);
                             audioState = AudioState.Disconnected;
                             SetStatusFlag(StatusFlag.AudioSrcConnectionError);
                             this.Log(LogLevel.Info, "Audio connection closed.");
@@ -490,7 +487,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
         [field: Transient]
         public event Action<byte> CharReceived;
-        
+
         public int IpAddress { get; }
         public int UdpServerPort { get; }
         public int UdpMessageMagic { get; }
@@ -511,7 +508,6 @@ namespace Antmicro.Renode.Peripherals.Wireless
         private StatusFlag status;
         private int audioBlockSize;
         private bool isConnectedToAp;
-        private AudioSource audioSrc;
         private AudioState audioState;
 
         private enum Channel
@@ -602,7 +598,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
             public WirelessInterface(ESP32 esp)
             {
                 this.esp = esp;
-                this.rxLock = new object(); 
+                this.rxLock = new object();
                 this.txLock = new object();
                 this.msgBuffer = new List<byte>();
                 this.msgHeader = null;
@@ -711,7 +707,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                         if (--dataLength == 0)
                         {
                             esp.Log(LogLevel.Noisy, "All transaction data transmitted.");
-                            
+
                             bool done = ProcessData();
 
                             if (done)
@@ -732,10 +728,10 @@ namespace Antmicro.Renode.Peripherals.Wireless
             {
                 if (stage != Stage.Processing)
                 {
-                    esp.Log(LogLevel.Error, 
+                    esp.Log(LogLevel.Error,
                             "NotifiyDataProcessed() called in invalid stage: {0}",
                             stage);
-                    
+
                     return;
                 }
 
@@ -813,7 +809,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
                         if (ret != 0)
                             return -1;
-                        
+
                         break;
                     default:
                         return -1;
@@ -842,12 +838,12 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 if (direction == Direction.Read)
                 {
                     return buffer[buffer.Count - dataLength];
-                }   
+                }
                 else
                 {
                     buffer.Add(data);
                     return 0;
-                } 
+                }
             }
 
             private bool ProcessData()
@@ -882,11 +878,11 @@ namespace Antmicro.Renode.Peripherals.Wireless
             }
 
             private readonly ESP32 esp;
-            private readonly List<byte> buffer;  
+            private readonly List<byte> buffer;
             private Stage stage;
             private Direction direction;
             private Address address;
-            private int dataLength; 
+            private int dataLength;
 
             private enum Stage
             {
@@ -900,7 +896,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 Read,
                 Write
             }
-            
+
             private enum Address
             {
                 Status,
@@ -922,7 +918,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
             public byte[] ToBytes()
             {
                 byte[] bytes = new byte[6];
-                
+
                 int curByte = 0;
                 GetBytesInt32(bytes, Address, ref curByte);
                 GetBytesInt16(bytes, Port, ref curByte);
@@ -962,7 +958,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
                 return new AudioSource(addr, port);
             }
-            
+
             public static bool operator==(AudioSource lhs, AudioSource rhs)
             {
                 if (Object.ReferenceEquals(lhs, null))
