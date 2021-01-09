@@ -75,7 +75,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 audioBuffer.Clear();
 
                 AckPin.Set();
-                StatusPin.Set();
+                StatusPin.Unset(); /* Assert Status line when initialized */
             }
         }
 
