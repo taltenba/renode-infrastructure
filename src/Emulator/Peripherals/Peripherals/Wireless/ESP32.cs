@@ -182,7 +182,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
             /* Replace destination IP address by magic number */
             GetBytesInt32(msgData, UdpMessageMagic);
 
-            WirelessMessage msg = CreateUdpServerMessage(Channel.Control, msgData);
+            WirelessMessage msg = new WirelessMessage(Channel.Control, IpAddress, UdpServerPort, msgData);
             remoteClient.TransmitMessage(msg);
             return true;
         }
@@ -207,7 +207,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
             }
 
             byte[] msgData = src.ToBytes();
-            WirelessMessage msg = CreateUdpServerMessage(Channel.AudioConnectionManagement, msgData);
+            WirelessMessage msg = new WirelessMessage(Channel.AudioConnectionManagement, IpAddress, 0, msgData);
             remoteClient.TransmitMessage(msg);
 
             return isDisconnectRequest;
@@ -418,11 +418,6 @@ namespace Antmicro.Renode.Peripherals.Wireless
             {
                 status &= ~flag;
             }
-        }
-
-        private WirelessMessage CreateUdpServerMessage(Channel chan, byte[] data)
-        {
-            return new WirelessMessage(Channel.Control, IpAddress, UdpServerPort, data);
         }
 
         private static int ParseInt32(IList<byte> bytes, ref int start)
