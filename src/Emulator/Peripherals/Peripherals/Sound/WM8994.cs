@@ -10,7 +10,7 @@ using Antmicro.Migrant;
 namespace Antmicro.Renode.Peripherals.Sound
 {
     /*
-     * Cirrus Logic WM8994 audio codec.  
+     * Cirrus Logic WM8994 audio codec.
      *
      * Only some registers are implemented, they are those related to:
      *  - Software reset.
@@ -134,7 +134,7 @@ namespace Antmicro.Renode.Peripherals.Sound
                                         dac1rSpkMixrEnable.Value &&
                                         spkMixrSpkOutrEnable.Value &&
                                         spkOutrEnable.Value;
-            
+
             conf.DspClkEnabled = aif1ClkSource.Value == AifClockSource.MCLK1 &&
                                  sysClkSource.Value == SysClockSource.AIF1CLK &&
                                  aif1ClkEnable.Value &&
@@ -175,7 +175,7 @@ namespace Antmicro.Renode.Peripherals.Sound
 
             for (int i = 0; i < serializedConf.Length; ++i)
                 TransmitByte((byte) serializedConf[i]);
-            
+
             TransmitByte((byte) '\0');
         }
 
@@ -189,7 +189,7 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithTaggedFlag("ADCL_TO_DAC1L", 4)
                 .WithTaggedFlag("ADCR_TO_DAC1L", 5)
                 .WithReservedBits(6, 10);
-            
+
             Registers.Dac1rMixerRouting.Define16(this, 0x0000, "R1538")
                 .WithFlag(0, out aif1dac1rDac1rEnable, name: "AIF1DAC1R_TO_DAC1R")
                 .WithTaggedFlag("AIF1DAC2R_TO_DAC1R", 1)
@@ -203,12 +203,12 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithValueField(0, 8, out aif1dac1lVol, name: "AIF1DAC1L_VOL")
                 .WithFlag(8, FieldMode.Write, writeCallback: OnAif1Dac1VolUpdate, name: "AIF1DAC1_VU")
                 .WithReservedBits(9, 7);
-            
+
             Registers.Aif1Dac1rVolume.Define16(this, 0x00C0, "R1027")
                 .WithValueField(0, 8, out aif1dac1rVol, name: "AIF1DAC1R_VOL")
                 .WithFlag(8, FieldMode.Write, writeCallback: OnAif1Dac1VolUpdate, name: "AIF1DAC1_VU")
                 .WithReservedBits(9, 7);
-            
+
             Registers.Aif1Dac1Filters1.Define16(this, 0x0200, "R1056")
                 .WithReservedBits(0, 1)
                 .WithTag("AIF1DAC1_DEEMP", 1, 2)
@@ -233,12 +233,12 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithTaggedFlag("AIF2DACR_ENA", 12)
                 .WithTaggedFlag("AIF2DACL_ENA", 13)
                 .WithReservedBits(14, 2);
-            
+
             Registers.Dac1lVolume.Define16(this, 0x02C0, "R1552")
                 .WithValueField(0, 8, out dac1lVol, name: "DAC1L_VOL")
                 .WithFlag(8, FieldMode.Write, writeCallback: OnDac1VolUpdate, name: "DAC1_VU")
                 .WithFlag(9, out dac1lMute, name: "DAC1L_MUTE");
-            
+
             Registers.Dac1rVolume.Define16(this, 0x02C0, "R1553")
                 .WithValueField(0, 8, out dac1rVol, name: "DAC1R_VOL")
                 .WithFlag(8, FieldMode.Write, writeCallback: OnDac1VolUpdate, name: "DAC1_VU")
@@ -269,7 +269,7 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithReservedBits(7, 1)
                 .WithTaggedFlag("SPK_AB_REF_SEL", 8)
                 .WithReservedBits(9, 7);
-            
+
             Registers.SpkMixrAttenuation.Define16(this, 0x0003, "R35")
                 .WithValueField(0, 2, out spkMixrVol, name: "SPKMIXR_VOL")
                 .WithFlag(2, out spkMixrAttenuation, name: "DAC1R_SPKMIXR_VOL")
@@ -280,7 +280,7 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithReservedBits(7, 1)
                 .WithTaggedFlag("SPKOUT_CLASSAB", 8)
                 .WithReservedBits(9, 7);
-            
+
             Registers.SpeakerMixer.Define16(this, 0x0000, "R54")
                 .WithFlag(0, out dac1rSpkMixrEnable, name: "DAC1R_TO_SPKMIXR")
                 .WithFlag(1, out dac1lSpkMixlEnable, name: "DAC1L_TO_SPKMIXL")
@@ -299,7 +299,7 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithFlag(6, out spkOutlUnmute, name: "SPKOUTL_MUTE_N")
                 .WithTaggedFlag("SPKOUTL_ZC", 7)
                 .WithFlag(8, FieldMode.Write, writeCallback: OnSpkOutVolUpdate, name: "SPKOUT_VU");
-            
+
             Registers.SpkrVolume.Define16(this, 0x0079, "R39")
                 .WithValueField(0, 6, out spkOutrVol, name: "SPKOUTR_VOL")
                 .WithFlag(6, out spkOutrUnmute, name: "SPKOUTL_MUTE_N")
@@ -339,14 +339,14 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithReservedBits(12, 2)
                 .WithTaggedFlag("AIF1DACR_SRC", 14)
                 .WithTaggedFlag("AIF1DACL_SRC", 15);
-            
+
             Registers.Aif1Clocking1.Define16(this, 0x0000, name: "R512")
                 .WithFlag(0, out aif1ClkEnable, name: "AIF1CLK_ENA")
                 .WithFlag(1, out aif1ClkDivider, name: "AIFCLK_DIV")
                 .WithTaggedFlag("AIF1CLK_INV", 2)
                 .WithEnumField(3, 2, out aif1ClkSource, name: "AIF1CLK_SRC")
                 .WithReservedBits(5, 11);
-            
+
             Registers.Aif1Rate.Define16(this, 0x0083, name: "R528")
                 .WithEnumField(0, 4, out aif1ClkRate, name: "AIF1CLK_RATE")
                 .WithEnumField(4, 4, out aif1SampleRate, name: "AIF1_SR")
@@ -359,7 +359,7 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithFlag(3, out aif1DspClkEnable, name: "AIF1DSPCLK_ENA")
                 .WithTaggedFlag("TOCLK_ENA", 4)
                 .WithReservedBits(5, 11);
-        
+
             Registers.WriteSequencerControl1.Define16(this, 0x0000, name: "R272")
                 .WithValueField(0, 7, out wseqStartIndex, name: "WSEQ_START_INDEX")
                 .WithReservedBits(7, 1)
@@ -367,7 +367,7 @@ namespace Antmicro.Renode.Peripherals.Sound
                 .WithFlag(9, valueProviderCallback: _ => false, writeCallback: OnWseqAbortWrite, name: "WSEQ_ABORT")
                 .WithReservedBits(10, 5)
                 .WithFlag(15, out wseqEnable, changeCallback: OnWseqEnableUpdate, name: "WSEQ_ENA");
-            
+
             Registers.WriteSequencerControl2.Define16(this, 0x0000, name: "R273")
                 .WithTag("WSEQ_CURRENT_INDEX", 0, 7)
                 .WithReservedBits(7, 1)
@@ -424,7 +424,7 @@ namespace Antmicro.Renode.Peripherals.Sound
         {
             if (!newVal || !wseqEnable.Value)
                 return;
-            
+
             ExecuteWriteSequence(wseqStartIndex.Value);
         }
 
@@ -453,7 +453,7 @@ namespace Antmicro.Renode.Peripherals.Sound
                     RunSpeakerShutdownSequence();
                     break;
                 default:
-                    this.Log(LogLevel.Warning, 
+                    this.Log(LogLevel.Warning,
                              "The specified write sequence is not implemented: {0}", wseqStartIndex.Value);
                     break;
             }
@@ -485,7 +485,7 @@ namespace Antmicro.Renode.Peripherals.Sound
                 return float.NegativeInfinity;
             else if (aifVol < 0xC0)
                 ampli += 0.375f * ((int) aifVol - 0xC0);
-            
+
             if (dacVol == 0)
                 return float.NegativeInfinity;
             else if (dacVol < 0xC0)
@@ -552,7 +552,7 @@ namespace Antmicro.Renode.Peripherals.Sound
         {
             if (!aif1DacCompandingEnable.Value && aif1DacCompandingMode.Value)
                 return 8;
-            
+
             switch (aif1WordLength.Value)
             {
                 case AifWordLength.Bits16:
@@ -597,7 +597,7 @@ namespace Antmicro.Renode.Peripherals.Sound
                     return 96000;
                 default:
                     this.Log(LogLevel.Error, "Invalid sample rate: {0}", aif1SampleRate.Value);
-                    return 0; 
+                    return 0;
             }
         }
 
@@ -734,7 +734,7 @@ namespace Antmicro.Renode.Peripherals.Sound
             AIF1CLK = 0,
             AIF2CLK = 1
         }
-        
+
         private enum Registers
         {
             SoftwareReset = 0x0000,
@@ -783,8 +783,8 @@ namespace Antmicro.Renode.Peripherals.Sound
             public bool SpkrMuted { get; set; }
             public ushort MclkSamplingFreqRatio { get; set; }
             public float SpklAmpli { get; set; }
-            public float SpkrAmpli { get; set; } 
-            public uint SampleRate { get; set; } 
+            public float SpkrAmpli { get; set; }
+            public uint SampleRate { get; set; }
             public byte AifFormat { get; set; }
             public byte Resolution { get; set; }
         }
