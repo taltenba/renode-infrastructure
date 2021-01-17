@@ -122,7 +122,17 @@ namespace Antmicro.Renode.Peripherals.IRQControllers
                 softwareInterrupt &= ~value;
                 BitHelper.ForeachActiveBit(value, (x) =>
                 {
-                    Connections[gpioMapping[x]].Unset();
+                    int mappedLine = gpioMapping[x];
+
+                    for (int i = 0; i < gpioMapping.Length; ++i) {
+                        if (gpioMapping[i] != mappedLine)
+                            continue;
+
+                        if (BitHelper.IsBitSet(pending, (byte) i))
+                            return;
+                    }
+
+                    Connections[mappedLine].Unset();
                 });
                 break;
             default:
