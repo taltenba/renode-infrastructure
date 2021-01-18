@@ -197,6 +197,9 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 if (isDisconnectRequest && audioState == AudioState.Disconnected)
                     return true;
 
+                if (audioState == AudioState.Connected)
+                    this.Log(LogLevel.Info, "Audio connection closed.");
+
                 audioBuffer.Clear();
                 ClearStatusFlag(StatusFlag.HasAudio);
 
