@@ -29,8 +29,8 @@ namespace Antmicro.Renode.Peripherals.Wireless
             if (maxUdpMessageSize <= 0 || (maxUdpMessageSize & 0x03) != 0)
                 throw new ArgumentOutOfRangeException("maxUdpMessageSize", maxUdpMessageSize, "Invalid size, must be a positive multiple of 4.");
 
-            if (defaultAudioBlockSize <= 0 || (defaultAudioBlockSize & 0x03) != 0)
-                throw new ArgumentOutOfRangeException("defaultAudioBlockSize", defaultAudioBlockSize, "Invalid size, must be a positive multiple of 4.");
+            if (defaultAudioBlockSize <= 0)
+                throw new ArgumentOutOfRangeException("defaultAudioBlockSize", defaultAudioBlockSize, "Invalid size, must be positive.");
 
             System.Net.IPAddress addr = System.Net.IPAddress.Parse(ipAddress);
 
@@ -215,16 +215,6 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
         private bool ProcessAudioBlockSize(int size)
         {
-            if ((size & 0x03) != 0)
-            {
-                this.Log(LogLevel.Warning,
-                         "Invalid audio block size, must be a multiple of 4: {0}."
-                          + " Size will be rounded to next multiple of 4.",
-                          size);
-
-                size = (size + 0x03) & ~0x03;
-            }
-
             lock (stateLock)
             {
                 if (size == audioBlockSize)
@@ -765,7 +755,8 @@ namespace Antmicro.Renode.Peripherals.Wireless
                         dataLength = 8;
                         break;
                     case Address.AudioData:
-                        dataLength = esp.audioBlockSize;
+                        /* Align audio block size on 4-byte boundary */
+                        dataLength = (esp.audioBlockSize + 0x3) & ~0x3;
                         break;
                     default:
                         esp.Log(LogLevel.Warning, "Undefined address: {0}", address);
@@ -794,10 +785,6 @@ namespace Antmicro.Renode.Peripherals.Wireless
                             return -1;
 
                         buffer.AddRange(msg);
-
-                        for (int i = msg.Length; i < dataLength; ++i)
-                            buffer.Add(0);
-
                         break;
                     case Address.AudioData:
                         int ret = esp.ReadAudioBlock(buffer);
@@ -809,6 +796,10 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     default:
                         return -1;
                 }
+
+                /* Pad buffer data with 0 if needed */
+                for (int i = buffer.Count; i < dataLength; ++i)
+                    buffer.Add(0);
 
                 return 0;
             }
