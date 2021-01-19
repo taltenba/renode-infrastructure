@@ -412,9 +412,7 @@ namespace Antmicro.Renode.Peripherals.DMA
                     pendingRequest = null;
 
                     if (interruptOnComplete)
-                    {
-                        parent.machine.LocalTimeSource.ExecuteInNearestSyncedState(_ => IRQ.Set());
-                    }
+                        IRQ.Set();
                 }
             }
 
